@@ -29,6 +29,7 @@ const USER_AGENT = 'Mozilla/5.0 (Windows NT 11.0; Win64; x64) AppleWebKit/537.36
 const cookies = new Map();
 let lastPrime = 0;
 let primePromise = null;
+let lastNseDiagnostic = { status: null, url: null, at: null, note: 'not requested yet' };
 const responseCache = new Map();
 
 function symbolFromUrl(url) {
@@ -174,6 +175,14 @@ async function fetchRemote(targetUrl) {
     await primeNse(true, parsed.searchParams.get('symbol') || 'TCS');
     out = await request();
   }
+  if (isNse) {
+    lastNseDiagnostic = {
+      status: out.res.status,
+      url: parsed.pathname + parsed.search,
+      at: new Date().toISOString(),
+      note: out.res.ok ? 'ok' : 'upstream rejected request'
+    };
+  }
   if (isNse && out.res.ok) {
     const h = new Headers(out.res.headers);
     responseCache.set(cacheKey, {
@@ -248,6 +257,7 @@ const server = http.createServer(async (req, res) => {
         port: PORT,
         nseCookieCount: cookies.size,
         nseSessionAgeSeconds: lastPrime ? Math.round((Date.now()-lastPrime)/1000) : null,
+        lastNseDiagnostic,
         uptimeSeconds: Math.round(process.uptime())
       });
     }
