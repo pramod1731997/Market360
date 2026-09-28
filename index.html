@@ -165,6 +165,7 @@ function f(v,d){var x=n(v);if(x===null)return '—';return x.toLocaleString('en-
 function money(v){return n(v)===null?'—':'₹'+f(v,2)}
 function pct(v){var x=n(v);return x===null?'—':(x>=0?'+':'')+f(x,2)+'%'}
 function compact(v){var x=n(v);return x===null?'—':new Intl.NumberFormat('en-IN',{notation:'compact',maximumFractionDigits:1}).format(x)}
+function crore(v){var x=n(v);if(x===null)return '—';if(Math.abs(x)>=100000)return '₹'+f(x/100000,2)+' L Cr';if(Math.abs(x)>=1000)return '₹'+f(x/1000,2)+' K Cr';return '₹'+f(x,2)+' Cr'}
 function cls(v){return n(v)>0?'pos':n(v)<0?'neg':'neu'}
 function esc(s){return String(s||'').replace(/[&<>'"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]})}
 function pick(o,paths){for(var i=0;i<paths.length;i++){var x=o;var ks=paths[i].split('.');for(var j=0;j<ks.length;j++)x=x&&x[ks[j]];if(x!==undefined&&x!==null&&x!=='')return x}return null}
@@ -202,30 +203,46 @@ function renderMarket(){
 function normalizeNextQuote(j,sym){
  var r=j&&j.equityResponse&&j.equityResponse[0];if(!r)throw new Error('NSE NextApi returned no equityResponse');
  var md=r.metaData||{},pi=r.priceInfo||{},ob=r.orderBook||{},ti=r.tradeInfo||{},si=r.secInfo||{};
- function pv(paths){return pick(r,paths)}
- var last=n(pick(ob,['lastPrice','ltp'])||pick(pi,['lastPrice','ltp'])||pv(['lastPrice']));
- var prev=n(pick(pi,['previousClose','prevClose','close'])||pick(ob,['previousClose','prevClose','closePrice'])||pv(['previousClose','prevClose']));
- var op=n(pick(pi,['open','openPrice'])||pick(ob,['open','openPrice']));
- var hi=n(pick(pi,['intraDayHighLow.max','dayHigh','high','highPrice'])||pick(ob,['dayHigh','highPrice']));
- var lo=n(pick(pi,['intraDayHighLow.min','dayLow','low','lowPrice'])||pick(ob,['dayLow','lowPrice']));
- var hi52=n(pick(pi,['weekHighLow.max','fiftyTwoWeekHigh','weekHigh','yearHigh'])||pick(ob,['fiftyTwoWeekHigh','weekHigh']));
- var lo52=n(pick(pi,['weekHighLow.min','fiftyTwoWeekLow','weekLow','yearLow'])||pick(ob,['fiftyTwoWeekLow','weekLow']));
- var change=n(pick(pi,['change','changeValue']));if(change===null&&last!==null&&prev!==null)change=last-prev;
- var pchange=n(pick(pi,['pChange','percentChange','changePercent']));if(pchange===null&&change!==null&&prev)pchange=change/prev*100;
- var totalVol=n(pick(ti,['totalTradedVolume','tradedVolume','totalTradedQuantity','quantityTraded'])||pick(ob,['totalTradedVolume','tradedVolume']));
- var delivery=n(pick(ti,['deliveryToTradedQuantity','deliveryPercentage','deliveryPercent','delivery'])||pv(['deliveryToTradedQuantity']));
+ var last=n(pick(ob,['lastPrice'])||pick(md,['lastPrice'])||pick(pi,['lastPrice']));
+ var prev=n(pick(md,['previousClose','prevClose','closePrice']));
+ var op=n(pick(md,['open','openPrice']));
+ var hi=n(pick(md,['dayHigh','highPrice','high']));
+ var lo=n(pick(md,['dayLow','lowPrice','low']));
+ var hi52=n(pick(pi,['yearHigh','weekHigh','fiftyTwoWeekHigh']));
+ var lo52=n(pick(pi,['yearLow','weekLow','fiftyTwoWeekLow']));
+ var vwap=n(pick(md,['averagePrice','vwap'])||pick(pi,['averagePrice','vwap']));
+ var change=n(pick(md,['change','changeValue']));if(change===null&&last!==null&&prev!==null)change=last-prev;
+ var pchange=n(pick(md,['pChange','percentChange','changePercent']));if(pchange===null&&change!==null&&prev)pchange=change/prev*100;
+ var totalVol=n(pick(ti,['totalTradedVolume','quantitytraded','tradedVolume','totalTradedQuantity']));
+ var delivery=n(pick(ti,['deliveryToTradedQuantity','deliveryPercentage','deliveryPercent']));
  var marketCap=n(pick(ti,['totalMarketCap','marketCap','totalMktCap']));
  var buyQty=n(pick(ob,['totalBuyQuantity','buyQuantity','totalBuyQty']));
  var sellQty=n(pick(ob,['totalSellQuantity','sellQuantity','totalSellQty']));
+ var annualVol=n(pick(pi,['cmAnnualVolatility','annualisedVolatility','annualVolatility']));
+ var dailyVol=n(pick(pi,['cmDailyVolatility','dailyVolatility']));
+ var basicIndustry=pick(si,['basicIndustry'])||pick(si,['industryInfo'])||pick(si,['industry'])||pick(md,['industry']);
  var meta={
   companyName:pick(md,['companyName','company','name'])||sym,
-  pdSymbolPe:pick(md,['pdSymbolPe','pe','symbolPE','symbolPe']),
-  pdSectorPe:pick(md,['pdSectorPe','sectorPE','sectorPe']),
-  pdSymbolPb:pick(md,['pdSymbolPb','pb','priceToBook']),
-  faceValue:pick(si,['faceValue'])||pick(md,['faceValue'])
+  pdSymbolPe:pick(si,['pdSymbolPe','symbolPE','symbolPe'])||pick(md,['pdSymbolPe','pe']),
+  pdSectorPe:pick(si,['pdSectorPe','sectorPE','sectorPe'])||pick(md,['pdSectorPe']),
+  pdSymbolPb:pick(si,['pdSymbolPb','pb','priceToBook'])||pick(md,['pdSymbolPb','pb']),
+  faceValue:pick(ti,['faceValue'])||pick(si,['faceValue'])||pick(md,['faceValue']),
+  lastUpdateTime:r.lastUpdateTime||pick(md,['lastUpdateTime'])
  };
- var quote={info:{symbol:pick(md,['symbol'])||sym,companyName:meta.companyName},metadata:meta,securityInfo:si,industryInfo:{basicIndustry:pick(md,['basicIndustry','industry','sector'])},priceInfo:{lastPrice:last,previousClose:prev,open:op,intraDayHighLow:{max:hi,min:lo},weekHighLow:{max:hi52,min:lo52},vwap:pick(pi,['vwap','VWAP'])||pick(ob,['vwap']),change:change,pChange:pchange}};
- var trade={marketDeptOrderBook:{tradeInfo:Object.assign({},ti,{totalTradedVolume:totalVol,totalMarketCap:marketCap}),totalBuyQuantity:buyQty,totalSellQuantity:sellQty},securityWiseDP:{quantityTraded:totalVol,deliveryToTradedQuantity:delivery}};
+ var quote={
+  info:{symbol:pick(md,['symbol'])||sym,companyName:meta.companyName},
+  metadata:meta,
+  securityInfo:Object.assign({},si,{faceValue:meta.faceValue}),
+  industryInfo:{basicIndustry:basicIndustry,industry:pick(si,['industryInfo','industry']),sector:pick(si,['sector']),macro:pick(si,['macro'])},
+  priceInfo:{lastPrice:last,previousClose:prev,open:op,intraDayHighLow:{max:hi,min:lo},weekHighLow:{max:hi52,min:lo52},vwap:vwap,change:change,pChange:pchange}
+ };
+ var trade={
+  marketDeptOrderBook:{
+   tradeInfo:Object.assign({},ti,{totalTradedVolume:totalVol,totalMarketCap:marketCap,cmAnnualVolatility:annualVol,cmDailyVolatility:dailyVol}),
+   totalBuyQuantity:buyQty,totalSellQuantity:sellQty
+  },
+  securityWiseDP:{quantityTraded:totalVol,deliveryToTradedQuantity:delivery}
+ };
  return{quote:quote,trade:trade,raw:r};
 }
 async function quote(sym){
@@ -246,10 +263,10 @@ async function quote(sym){
 function renderQuote(src){
  var q=S.quote||{},p=q.priceInfo||{},info=q.info||{},meta=q.metadata||{},sec=q.securityInfo||{},ind=q.industryInfo||{};var l=n(p.lastPrice),ch=n(p.change);if(ch===null&&l!==null&&n(p.previousClose)!==null)ch=l-n(p.previousClose);var pc=n(p.pChange);if(pc===null&&ch!==null&&n(p.previousClose))pc=ch/n(p.previousClose)*100;
  $('symTitle').textContent=info.symbol||S.symbol;$('company').textContent=info.companyName||meta.companyName||S.symbol;$('ltp').textContent=l===null?'₹—':money(l);$('chg').textContent=ch===null?'—':((ch>=0?'+':'')+f(ch,2)+' ('+pct(pc)+')');$('chg').className='change '+cls(ch);
- $('industry').textContent=ind.basicIndustry||ind.industry||meta.industry||'Industry —';$('sourcePill').textContent='Source: '+src;$('updated').textContent='Updated '+new Date().toLocaleTimeString('en-IN');
+ $('industry').textContent=ind.basicIndustry||ind.industry||meta.industry||'Industry —';$('sourcePill').textContent='Source: '+src;$('updated').textContent=meta.lastUpdateTime?('NSE '+meta.lastUpdateTime):('Updated '+new Date().toLocaleTimeString('en-IN'));
  $('open').textContent=money(p.open);$('high').textContent=money(p.intraDayHighLow&&p.intraDayHighLow.max);$('low').textContent=money(p.intraDayHighLow&&p.intraDayHighLow.min);$('prev').textContent=money(p.previousClose);$('hi52').textContent=money(p.weekHighLow&&p.weekHighLow.max);$('lo52').textContent=money(p.weekHighLow&&p.weekHighLow.min);$('vwap').textContent=money(p.vwap);
  var tr=S.trade||{},book=tr.marketDeptOrderBook||{},ti=book.tradeInfo||{},dp=tr.securityWiseDP||{};$('volume').textContent=compact(ti.totalTradedVolume||dp.quantityTraded);$('delivery').textContent=n(dp.deliveryToTradedQuantity)===null?'—':f(dp.deliveryToTradedQuantity,2)+'%';$('volatility').textContent=n(ti.cmAnnualVolatility)===null?'—':f(ti.cmAnnualVolatility,2)+'%';$('book').textContent=compact(book.totalBuyQuantity)+' / '+compact(book.totalSellQuantity);
- var mc=n(ti.totalMarketCap);$('mcap').textContent=mc===null?'—':compact(mc)+' Cr';$('pe').textContent=f(meta.pdSymbolPe,2);$('sectorPe').textContent=f(meta.pdSectorPe,2);$('pb').textContent=f(meta.pdSymbolPb||meta.pb,2);$('face').textContent=money(sec.faceValue||meta.faceValue);
+ var mc=n(ti.totalMarketCap);$('mcap').textContent=crore(mc);$('pe').textContent=f(meta.pdSymbolPe,2);$('sectorPe').textContent=f(meta.pdSectorPe,2);$('pb').textContent=f(meta.pdSymbolPb||meta.pb,2);$('face').textContent=money(sec.faceValue||meta.faceValue);
  $('dataNote').className='alert '+(src.indexOf('fallback')>=0?'bad':'good');$('dataNote').textContent=src.indexOf('fallback')>=0?'NSE quote was unavailable from this Codespace, so price fields temporarily use a clearly labelled Yahoo .NS fallback.':'NSE quote loaded through the Codespaces session gateway.';setConn(true,src);renderMarket();
 }
 async function intraday(sym){
