@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Market360 — NSE Live Research Terminal</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<style>
+:root{--bg:#071018;--panel:#0d1923;--panel2:#101f2c;--line:#203543;--text:#eef6fa;--muted:#8da5b4;--green:#35d07f;--red:#ff667a;--amber:#f2b84b;--blue:#55a9ff;--cyan:#58d5d8}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:radial-gradient(900px 620px at 85% -20%,rgba(85,169,255,.14),transparent 62%),var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif}.app{max-width:1540px;margin:auto;padding:14px}
+.top{position:sticky;top:0;z-index:20;display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:11px 13px;border:1px solid var(--line);border-radius:17px;background:rgba(7,16,24,.9);backdrop-filter:blur(16px)}
+.brand{display:flex;gap:9px;align-items:center;font-weight:850}.logo{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:linear-gradient(135deg,#38d08a,#398df1);color:#04120e;font-weight:950}.brand small{display:block;font-size:9px;color:var(--muted);letter-spacing:.1em}
+.search{display:flex;gap:8px}.search input{width:100%;background:#09141d;color:var(--text);border:1px solid var(--line);border-radius:11px;padding:11px 12px;text-transform:uppercase;outline:none}.search input:focus{border-color:#3f7291}.btn{border:1px solid var(--line);background:#112331;color:var(--text);padding:10px 14px;border-radius:11px;font-weight:760;cursor:pointer}.btn.primary{background:linear-gradient(135deg,#34ce82,#3193f4);border:0;color:#041018}.status{font-size:12px;color:var(--muted);white-space:nowrap}.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--amber);margin-right:7px}.dot.live{background:var(--green)}.dot.bad{background:var(--red)}
+.ticker{display:flex;gap:9px;overflow:auto;padding:11px 0 3px}.tick,.card{border:1px solid var(--line);background:linear-gradient(180deg,rgba(16,31,44,.92),rgba(10,22,31,.92));border-radius:16px}.tick{min-width:160px;padding:10px 12px}.tick .k,.label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:750}.tick .v{font-size:16px;font-weight:850;margin-top:4px}
+.grid2{display:grid;grid-template-columns:1.55fr .75fr;gap:12px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}.pad{padding:16px}.hero{padding:18px}.eyebrow{font-size:10px;color:var(--muted);font-weight:800;letter-spacing:.09em;text-transform:uppercase}.title{font-size:31px;font-weight:900;letter-spacing:-.04em;margin-top:5px}.company{color:var(--muted);font-size:13px;margin-top:4px}.price{font-size:44px;font-weight:920;letter-spacing:-.055em;margin-top:12px}.change{font-weight:800;margin-left:9px}.pos{color:var(--green)!important}.neg{color:var(--red)!important}.neu{color:var(--muted)!important}
+.pills{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}.pill{font-size:10px;font-weight:700;border:1px solid var(--line);border-radius:99px;background:#0a1821;padding:6px 8px;color:#b9cad4}
+.mini{padding:10px;background:#09151e;border:1px solid #1d3240;border-radius:12px}.mini .n{font-size:14px;font-weight:830;margin-top:4px}.section{margin-top:14px;scroll-margin-top:95px}.section h2{font-size:17px;margin:0 0 3px}.sub{color:var(--muted);font-size:11px;margin-bottom:9px}.nav{display:flex;gap:6px;overflow:auto;padding:10px 0 2px}.nav a{white-space:nowrap;text-decoration:none;font-size:10px;font-weight:800;padding:7px 10px;border:1px solid var(--line);border-radius:99px;background:#0b1822;color:#a9beca}
+.metric{padding:12px;border:1px solid #1d3240;background:#09151e;border-radius:12px}.metric .value{font-size:20px;font-weight:880;margin-top:5px}.metric .hint{font-size:10px;color:var(--muted);margin-top:3px}.chart{height:320px}.chart.sm{height:260px}.alert{padding:10px 12px;border:1px solid #254355;border-radius:11px;background:#0b1a24;color:#a9bfcc;font-size:11px}.alert.good{border-color:#245d45;background:rgba(25,83,59,.18)}.alert.bad{border-color:#6d3340;background:rgba(109,51,64,.15)}
+.gauge{height:10px;border-radius:99px;background:linear-gradient(90deg,#d95666,#dca74e,#78a65c,#36c783);position:relative;margin:13px 0}.needle{position:absolute;top:-5px;width:3px;height:20px;background:#fff;left:50%;border-radius:3px}.row{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.055);font-size:12px}.row:last-child{border-bottom:0}
+table{width:100%;border-collapse:collapse;font-size:11px}th,td{padding:9px 7px;text-align:right;border-bottom:1px solid rgba(255,255,255,.06)}th:first-child,td:first-child{text-align:left}th{color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.06em}
+.newslist{display:grid;gap:7px;max-height:660px;overflow:auto}.news{display:grid;grid-template-columns:auto 1fr auto;gap:9px;text-decoration:none;padding:10px;border:1px solid #1d3240;background:#09151e;border-radius:12px}.source{font-size:9px;padding:4px 6px;border:1px solid var(--line);border-radius:99px;color:#a9bfcc;height:max-content}.news h3{font-size:12px;line-height:1.4;margin:0 0 4px}.meta{font-size:9px;color:var(--muted)}.tag{font-size:9px;font-weight:800;text-transform:uppercase}.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}.chip{font-size:10px;border:1px solid var(--line);border-radius:99px;background:#0a1822;color:#a8bdc8;padding:6px 9px;cursor:pointer}.chip.active{color:#fff;border-color:#3b6076}
+.footer{color:#708a99;font-size:10px;line-height:1.5;padding:22px 4px 8px;text-align:center}
+@media(max-width:980px){.grid2,.grid3{grid-template-columns:1fr}.grid4{grid-template-columns:repeat(2,1fr)}.top{grid-template-columns:1fr auto}.brand{grid-column:1/3}.hero .grid4{grid-template-columns:repeat(3,1fr)}}@media(max-width:600px){.app{padding:8px}.top{border-radius:13px}.status{display:none}.search{grid-column:1/3}.grid4,.hero .grid4{grid-template-columns:repeat(2,1fr)}.price{font-size:36px}.title{font-size:25px}.chart{height:250px}.news{grid-template-columns:1fr}.source,.tag{width:max-content}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="top">
+    <div class="brand"><div class="logo">M</div><div>Market360<small>NSE RESEARCH TERMINAL</small></div></div>
+    <div class="search"><input id="symbol" value="RELIANCE" placeholder="NSE symbol"><button class="btn primary" id="analyze">Analyze</button><button class="btn" id="refresh">↻</button></div>
+    <div class="status"><span class="dot" id="dot"></span><span id="conn">Connecting…</span></div>
+  </div>
+
+  <div class="ticker">
+    <div class="tick"><div class="k">NIFTY 50</div><div class="v" id="nifty">—</div></div>
+    <div class="tick"><div class="k">NIFTY BANK</div><div class="v" id="bank">—</div></div>
+    <div class="tick"><div class="k">INDIA VIX</div><div class="v" id="vix">—</div></div>
+    <div class="tick"><div class="k">FII CASH</div><div class="v" id="fii">—</div></div>
+    <div class="tick"><div class="k">DII CASH</div><div class="v" id="dii">—</div></div>
+  </div>
+
+  <div class="grid2" style="margin-top:10px">
+    <div class="card hero">
+      <div class="eyebrow">NSE Equity • <span id="marketStatus">loading</span></div>
+      <div class="title" id="symTitle">RELIANCE</div><div class="company" id="company">Loading…</div>
+      <div><span class="price" id="ltp">₹—</span><span class="change" id="chg">—</span></div>
+      <div class="pills"><span class="pill" id="industry">Industry —</span><span class="pill" id="sourcePill">NSE</span><span class="pill" id="updated">—</span></div>
+      <div class="grid4" style="margin-top:15px">
+        <div class="mini"><div class="label">Open</div><div class="n" id="open">—</div></div>
+        <div class="mini"><div class="label">Day high</div><div class="n" id="high">—</div></div>
+        <div class="mini"><div class="label">Day low</div><div class="n" id="low">—</div></div>
+        <div class="mini"><div class="label">Prev close</div><div class="n" id="prev">—</div></div>
+        <div class="mini"><div class="label">52W high</div><div class="n" id="hi52">—</div></div>
+        <div class="mini"><div class="label">52W low</div><div class="n" id="lo52">—</div></div>
+        <div class="mini"><div class="label">VWAP</div><div class="n" id="vwap">—</div></div>
+        <div class="mini"><div class="label">Volume</div><div class="n" id="volume">—</div></div>
+      </div>
+      <div id="dataNote" class="alert" style="margin-top:12px">Loading live market data…</div>
+    </div>
+    <div class="card pad">
+      <div class="eyebrow">Market environment</div>
+      <div style="display:flex;justify-content:space-between;margin-top:5px"><strong id="mood">Balanced</strong><strong id="moodScore">0</strong></div>
+      <div class="gauge"><span class="needle" id="moodNeedle"></span></div>
+      <div class="sub">Descriptive context from NIFTY trend, breadth, VIX and institutional cash flows. This is not a buy/sell signal.</div>
+      <div class="row"><span>NIFTY today</span><strong id="moodNifty">—</strong></div>
+      <div class="row"><span>NIFTY breadth</span><strong id="breadth">—</strong></div>
+      <div class="row"><span>India VIX</span><strong id="moodVix">—</strong></div>
+      <div class="row"><span>FII / DII</span><strong id="moodFlow">—</strong></div>
+      <div class="row"><span>Stock vs NIFTY</span><strong id="relative">—</strong></div>
+    </div>
+  </div>
+
+  <div class="nav">
+    <a href="#overview">Overview</a><a href="#technical">Technicals</a><a href="#fundamental">Fundamentals</a><a href="#news">News & sentiment</a><a href="#derivatives">Derivatives</a><a href="#corporate">Corporate</a>
+  </div>
+
+  <section class="section" id="overview">
+    <h2>Live price & trading overview</h2><div class="sub">Primary path: NSE quote and chart endpoints through the Codespaces session gateway.</div>
+    <div class="grid2">
+      <div class="card pad"><div class="chart"><canvas id="intraday"></canvas></div></div>
+      <div class="card pad"><div class="grid4">
+        <div class="metric"><div class="label">Market cap</div><div class="value" id="mcap">—</div></div>
+        <div class="metric"><div class="label">Delivery %</div><div class="value" id="delivery">—</div></div>
+        <div class="metric"><div class="label">Annual volatility</div><div class="value" id="volatility">—</div></div>
+        <div class="metric"><div class="label">Buy / sell qty</div><div class="value" id="book">—</div></div>
+      </div></div>
+    </div>
+  </section>
+
+  <section class="section" id="technical">
+    <h2>Technical analysis</h2><div class="sub" id="historySource">Daily history loading…</div>
+    <div class="grid4">
+      <div class="metric"><div class="label">Trend</div><div class="value" id="trend">—</div><div class="hint" id="trendHint"></div></div>
+      <div class="metric"><div class="label">RSI 14</div><div class="value" id="rsi">—</div></div>
+      <div class="metric"><div class="label">MACD</div><div class="value" id="macd">—</div></div>
+      <div class="metric"><div class="label">ATR 14</div><div class="value" id="atr">—</div></div>
+      <div class="metric"><div class="label">20 DMA</div><div class="value" id="sma20">—</div></div>
+      <div class="metric"><div class="label">50 DMA</div><div class="value" id="sma50">—</div></div>
+      <div class="metric"><div class="label">200 DMA</div><div class="value" id="sma200">—</div></div>
+      <div class="metric"><div class="label">20D support / resistance</div><div class="value" id="sr">—</div></div>
+    </div>
+    <div class="card pad" style="margin-top:10px"><div class="chart"><canvas id="daily"></canvas></div></div>
+  </section>
+
+  <section class="section" id="fundamental">
+    <h2>Fundamentals & quarterly trend</h2><div class="sub">Exchange metadata and NSE results-comparison data where available.</div>
+    <div class="grid4">
+      <div class="metric"><div class="label">P/E</div><div class="value" id="pe">—</div></div>
+      <div class="metric"><div class="label">Sector P/E</div><div class="value" id="sectorPe">—</div></div>
+      <div class="metric"><div class="label">P/B</div><div class="value" id="pb">—</div></div>
+      <div class="metric"><div class="label">Face value</div><div class="value" id="face">—</div></div>
+    </div>
+    <div class="card pad" style="margin-top:10px;overflow:auto"><table><thead><tr><th>Period</th><th>Income</th><th>PAT</th><th>EPS</th><th>Type</th></tr></thead><tbody id="results"><tr><td colspan="5">Loading…</td></tr></tbody></table></div>
+  </section>
+
+  <section class="section" id="news">
+    <h2>News, RSS & headline sentiment</h2><div class="sub">Stock-specific Google News RSS plus Economic Times, Business Standard, BusinessLine and Mint market feeds; NSE announcements are merged separately.</div>
+    <div class="grid2">
+      <div class="card pad">
+        <div class="tabs" id="newsTabs"><button class="chip active" data-f="all">All</button><button class="chip" data-f="stock">Stock</button><button class="chip" data-f="market">Market</button><button class="chip" data-f="corporate">Corporate</button><button class="chip" data-f="positive">Positive words</button><button class="chip" data-f="negative">Negative words</button></div>
+        <div class="newslist" id="newsList"><div class="alert">Fetching RSS feeds…</div></div>
+      </div>
+      <div class="card pad">
+        <div class="eyebrow">Headline tone</div><div style="display:flex;justify-content:space-between;margin-top:5px"><strong id="newsMood">Neutral</strong><strong id="newsScore">0</strong></div>
+        <div class="gauge"><span class="needle" id="newsNeedle"></span></div>
+        <div class="row"><span>Positive-keyword headlines</span><strong class="pos" id="newsPos">0</strong></div>
+        <div class="row"><span>Negative-keyword headlines</span><strong class="neg" id="newsNeg">0</strong></div>
+        <div class="row"><span>Neutral</span><strong id="newsNeu">0</strong></div>
+        <div class="alert" style="margin-top:12px">Headline sentiment is a simple keyword classifier. It does not determine whether news is financially material; read the original source and company/exchange filing.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="derivatives">
+    <h2>NSE derivatives snapshot</h2><div class="sub">For NSE F&O stocks: nearest available expiry, open interest and implied-volatility context.</div>
+    <div class="grid4">
+      <div class="metric"><div class="label">Expiry</div><div class="value" id="expiry">—</div></div>
+      <div class="metric"><div class="label">PCR OI</div><div class="value" id="pcr">—</div></div>
+      <div class="metric"><div class="label">Max call OI strike</div><div class="value" id="maxCall">—</div></div>
+      <div class="metric"><div class="label">Max put OI strike</div><div class="value" id="maxPut">—</div></div>
+    </div>
+    <div class="card pad" style="margin-top:10px"><div class="row"><strong>Strike</strong><strong>Call OI</strong><strong>Call LTP</strong><strong>Put OI / LTP</strong></div><div id="optionRows"><div class="alert">Loading option chain…</div></div></div>
+  </section>
+
+  <section class="section" id="corporate">
+    <h2>Corporate filings & actions</h2><div class="sub">Exchange-originated information should be checked before relying on secondary headlines.</div>
+    <div class="grid3">
+      <div class="card pad"><div class="eyebrow">Announcements</div><div id="ann">Loading…</div></div>
+      <div class="card pad"><div class="eyebrow">Corporate actions</div><div id="actions">Loading…</div></div>
+      <div class="card pad"><div class="eyebrow">Shareholding filings</div><div id="shareholding">Loading…</div></div>
+    </div>
+  </section>
+
+  <div class="footer">Market360 is a research dashboard, not an investment recommendation. NSE endpoints, cookies and cloud-IP rules can change without notice. Verify critical data on the exchange and original company filings.</div>
+</div>
+
+<script>
+(function(){
+'use strict';
+var NSE='https://www.nseindia.com';
+var S={symbol:'RELIANCE',quote:null,trade:null,history:[],results:[],news:[],ann:[],actions:[],share:[],option:null,nifty:null,bank:null,vix:null,breadth:null,flows:null,charts:{},filter:'all',timers:{}};
+function $(id){return document.getElementById(id)}
+function n(v){if(v===null||v===undefined||v===''||v==='-')return null;var x=Number(String(v).replace(/,/g,''));return Number.isFinite(x)?x:null}
+function f(v,d){var x=n(v);if(x===null)return '—';return x.toLocaleString('en-IN',{minimumFractionDigits:d===undefined?2:d,maximumFractionDigits:d===undefined?2:d})}
+function money(v){return n(v)===null?'—':'₹'+f(v,2)}
+function pct(v){var x=n(v);return x===null?'—':(x>=0?'+':'')+f(x,2)+'%'}
+function compact(v){var x=n(v);return x===null?'—':new Intl.NumberFormat('en-IN',{notation:'compact',maximumFractionDigits:1}).format(x)}
+function cls(v){return n(v)>0?'pos':n(v)<0?'neg':'neu'}
+function esc(s){return String(s||'').replace(/[&<>'"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]})}
+function pick(o,paths){for(var i=0;i<paths.length;i++){var x=o;var ks=paths[i].split('.');for(var j=0;j<ks.length;j++)x=x&&x[ks[j]];if(x!==undefined&&x!==null&&x!=='')return x}return null}
+function setConn(ok,t){$('dot').className='dot '+(ok?'live':'bad');$('conn').textContent=t}
+async function text(url,timeout){var c=new AbortController(),tm=setTimeout(function(){c.abort()},timeout||16000);try{var r=await fetch('/proxy?url='+encodeURIComponent(url),{cache:'no-store',signal:c.signal});var s=await r.text();if(!r.ok)throw new Error(r.status+' '+s.slice(0,120));return s}finally{clearTimeout(tm)}}
+async function json(url,timeout){var s=await text(url,timeout);return JSON.parse(s)}
+function dmy(d){return String(d.getDate()).padStart(2,'0')+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+d.getFullYear()}
+function chartOpts(){return{responsive:true,maintainAspectRatio:false,interaction:{intersect:false,mode:'index'},plugins:{legend:{labels:{color:'#9fb4c0',boxWidth:10,font:{size:10}}}},scales:{x:{grid:{color:'rgba(255,255,255,.035)'},ticks:{color:'#78909e',maxTicksLimit:7,font:{size:9}}},y:{grid:{color:'rgba(255,255,255,.045)'},ticks:{color:'#78909e',font:{size:9}}}}}}
+
+async function health(){try{var r=await fetch('/health',{cache:'no-store'});return r.ok}catch(e){return false}}
+async function market(){
+ var a=await Promise.allSettled([
+  json(NSE+'/api/allIndices',12000),
+  json(NSE+'/api/equity-stockIndices?index='+encodeURIComponent('NIFTY 50'),12000),
+  json(NSE+'/api/fiidiiTradeNse',12000),
+  json(NSE+'/api/marketStatus',12000)
+ ]);
+ if(a[0].status==='fulfilled'){var rows=a[0].value.data||[];S.nifty=rows.find(function(x){return String(x.index).toUpperCase()==='NIFTY 50'});S.bank=rows.find(function(x){return String(x.index).toUpperCase()==='NIFTY BANK'});S.vix=rows.find(function(x){return String(x.index).toUpperCase()==='INDIA VIX'})}
+ if(a[1].status==='fulfilled'){var rr=(a[1].value.data||[]).filter(function(x){return x.symbol&&x.symbol!=='NIFTY 50'});S.breadth={a:rr.filter(function(x){return n(x.pChange)>0}).length,d:rr.filter(function(x){return n(x.pChange)<0}).length,t:rr.length}}
+ if(a[2].status==='fulfilled')S.flows=a[2].value;
+ if(a[3].status==='fulfilled'){var ms=a[3].value.marketState||a[3].value.data||[];$('marketStatus').textContent=(ms[0]&&((ms[0].marketStatus)||(ms[0].marketState)))||'status available'}
+ renderMarket();
+}
+function flowVal(label){var r=S.flows;if(!r)return null;var arr=Array.isArray(r)?r:(r.data||[]);var x=arr.find(function(z){return String(z.category||z.name||z.clientType||'').toUpperCase().indexOf(label)>=0});return n(x&&pick(x,['buyValue','buy','netValue','net','value']))}
+function renderMarket(){
+ function tick(id,x){if(!x){$(id).textContent='—';return}var c=n(x.percentChange!==undefined?x.percentChange:x.pChange);$(id).innerHTML=f(x.last,2)+' <span class="'+cls(c)+'">'+pct(c)+'</span>'}
+ tick('nifty',S.nifty);tick('bank',S.bank);tick('vix',S.vix);
+ var fii=flowVal('FII'),dii=flowVal('DII');$('fii').textContent=fii===null?'—':f(fii,0)+' Cr';$('dii').textContent=dii===null?'—':f(dii,0)+' Cr';
+ var np=n(S.nifty&&((S.nifty.percentChange!==undefined)?S.nifty.percentChange:S.nifty.pChange))||0,vp=n(S.vix&&((S.vix.percentChange!==undefined)?S.vix.percentChange:S.vix.pChange))||0;
+ var b=S.breadth&&S.breadth.t?((S.breadth.a-S.breadth.d)/S.breadth.t*100):0;var flow=((fii||0)+(dii||0))/1000;var score=Math.max(-100,Math.min(100,np*16+b*.25-vp*2+flow));var word=score>30?'Constructive':score<-30?'Risk-off':'Balanced';
+ $('mood').textContent=word;$('moodScore').textContent=Math.round(score);$('moodNeedle').style.left=((score+100)/2)+'%';$('moodNifty').textContent=pct(np);$('breadth').textContent=S.breadth?(S.breadth.a+' adv / '+S.breadth.d+' dec'):'—';$('moodVix').textContent=S.vix?f(S.vix.last,2)+' ('+pct(vp)+')':'—';$('moodFlow').textContent='FII '+(fii===null?'—':f(fii,0))+' / DII '+(dii===null?'—':f(dii,0));
+ var sp=n(S.quote&&S.quote.priceInfo&&S.quote.priceInfo.pChange);$('relative').textContent=sp===null?'—':((sp-np)>=0?'+':'')+f(sp-np,2)+' pp';
+}
+
+async function quote(sym){
+ try{
+  S.quote=await json(NSE+'/api/quote-equity?symbol='+encodeURIComponent(sym),14000);
+  try{S.trade=await json(NSE+'/api/quote-equity?symbol='+encodeURIComponent(sym)+'&section=trade_info',14000)}catch(e){S.trade=null}
+  renderQuote('NSE');
+ }catch(e){
+  var y=await json('https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(sym+'.NS')+'?interval=1m&range=1d&includePrePost=false',14000);var r=y.chart&&y.chart.result&&y.chart.result[0];if(!r)throw e;var m=r.meta||{},last=m.regularMarketPrice;
+  S.quote={info:{symbol:sym,companyName:m.longName||m.shortName||sym},priceInfo:{lastPrice:last,previousClose:m.chartPreviousClose,open:m.regularMarketOpen,intraDayHighLow:{max:m.regularMarketDayHigh,min:m.regularMarketDayLow},weekHighLow:{max:m.fiftyTwoWeekHigh,min:m.fiftyTwoWeekLow},change:last-m.chartPreviousClose,pChange:m.chartPreviousClose?((last-m.chartPreviousClose)/m.chartPreviousClose*100):null}};S.trade=null;renderQuote('Yahoo .NS fallback');
+ }
+}
+function renderQuote(src){
+ var q=S.quote||{},p=q.priceInfo||{},info=q.info||{},meta=q.metadata||{},sec=q.securityInfo||{},ind=q.industryInfo||{};var l=n(p.lastPrice),ch=n(p.change);if(ch===null&&l!==null&&n(p.previousClose)!==null)ch=l-n(p.previousClose);var pc=n(p.pChange);if(pc===null&&ch!==null&&n(p.previousClose))pc=ch/n(p.previousClose)*100;
+ $('symTitle').textContent=info.symbol||S.symbol;$('company').textContent=info.companyName||meta.companyName||S.symbol;$('ltp').textContent=l===null?'₹—':money(l);$('chg').textContent=ch===null?'—':((ch>=0?'+':'')+f(ch,2)+' ('+pct(pc)+')');$('chg').className='change '+cls(ch);
+ $('industry').textContent=ind.basicIndustry||ind.industry||meta.industry||'Industry —';$('sourcePill').textContent='Source: '+src;$('updated').textContent='Updated '+new Date().toLocaleTimeString('en-IN');
+ $('open').textContent=money(p.open);$('high').textContent=money(p.intraDayHighLow&&p.intraDayHighLow.max);$('low').textContent=money(p.intraDayHighLow&&p.intraDayHighLow.min);$('prev').textContent=money(p.previousClose);$('hi52').textContent=money(p.weekHighLow&&p.weekHighLow.max);$('lo52').textContent=money(p.weekHighLow&&p.weekHighLow.min);$('vwap').textContent=money(p.vwap);
+ var tr=S.trade||{},book=tr.marketDeptOrderBook||{},ti=book.tradeInfo||{},dp=tr.securityWiseDP||{};$('volume').textContent=compact(ti.totalTradedVolume||dp.quantityTraded);$('delivery').textContent=n(dp.deliveryToTradedQuantity)===null?'—':f(dp.deliveryToTradedQuantity,2)+'%';$('volatility').textContent=n(ti.cmAnnualVolatility)===null?'—':f(ti.cmAnnualVolatility,2)+'%';$('book').textContent=compact(book.totalBuyQuantity)+' / '+compact(book.totalSellQuantity);
+ var mc=n(ti.totalMarketCap);$('mcap').textContent=mc===null?'—':compact(mc)+' Cr';$('pe').textContent=f(meta.pdSymbolPe,2);$('sectorPe').textContent=f(meta.pdSectorPe,2);$('pb').textContent=f(meta.pdSymbolPb||meta.pb,2);$('face').textContent=money(sec.faceValue||meta.faceValue);
+ $('dataNote').className='alert '+(src.indexOf('fallback')>=0?'bad':'good');$('dataNote').textContent=src.indexOf('fallback')>=0?'NSE quote was unavailable from this Codespace, so price fields temporarily use a clearly labelled Yahoo .NS fallback.':'NSE quote loaded through the Codespaces session gateway.';setConn(true,src);renderMarket();
+}
+async function intraday(sym){
+ var pts=[],lab='NSE intraday';try{var j=await json(NSE+'/api/chart-databyindex?index='+encodeURIComponent(sym+'EQN'),14000);pts=(j.grapthData||j.graphData||[]).map(function(x){return{x:new Date(x[0]),y:n(x[1])}}).filter(function(x){return x.y!==null})}catch(e){var y=await json('https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(sym+'.NS')+'?interval=5m&range=1d',14000);var r=y.chart&&y.chart.result&&y.chart.result[0],q=r&&r.indicators&&r.indicators.quote&&r.indicators.quote[0];pts=(r&&r.timestamp||[]).map(function(t,i){return{x:new Date(t*1000),y:n(q&&q.close&&q.close[i])}}).filter(function(x){return x.y!==null});lab='Yahoo intraday fallback'}
+ if(S.charts.intra)S.charts.intra.destroy();S.charts.intra=new Chart($('intraday'),{type:'line',data:{labels:pts.map(function(x){return x.x.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})}),datasets:[{label:lab,data:pts.map(function(x){return x.y}),borderColor:'#55a9ff',backgroundColor:'rgba(85,169,255,.08)',fill:true,pointRadius:0,borderWidth:1.6,tension:.15}]},options:chartOpts()});
+}
+function csvLine(line){var o=[],c='',q=false;for(var i=0;i<line.length;i++){var ch=line[i];if(ch==='"'){if(q&&line[i+1]==='"'){c+='"';i++}else q=!q}else if(ch===','&&!q){o.push(c);c=''}else c+=ch}o.push(c);return o}
+function parseHist(s){var lines=s.trim().split(/\r?\n/).filter(Boolean);if(lines.length<2)return[];var h=csvLine(lines[0]).map(function(x){return x.trim().replace(/^"|"$/g,'')});return lines.slice(1).map(function(line){var a=csvLine(line),o={};h.forEach(function(k,i){o[k]=a[i]});function val(keys){for(var z in o){var k=z.toLowerCase().replace(/[^a-z]/g,'');for(var j=0;j<keys.length;j++)if(k.indexOf(keys[j])>=0)return o[z]}return null}return{date:new Date(val(['timestamp','tradedate','date'])),open:n(val(['openingprice','openprice','open'])),high:n(val(['tradehighprice','highprice','high'])),low:n(val(['tradelowprice','lowprice','low'])),close:n(val(['closingprice','closeprice','close'])),volume:n(val(['tottradedqty','totaltradedquantity','volume']))}}).filter(function(x){return x.close!==null&&!isNaN(x.date)}).sort(function(a,b){return a.date-b.date})}
+async function history(sym){
+ var to=new Date(),from=new Date();from.setDate(from.getDate()-500);try{var s=await text(NSE+'/api/historical/securityArchives?from='+dmy(from)+'&to='+dmy(to)+'&symbol='+encodeURIComponent(sym)+'&dataType=priceVolumeDeliverable&series=EQ&csv=true',20000);S.history=parseHist(s);if(S.history.length<60)throw new Error('short');$('historySource').textContent='History: NSE daily archives'}catch(e){var y=await json('https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(sym+'.NS')+'?interval=1d&range=2y&events=history',16000);var r=y.chart&&y.chart.result&&y.chart.result[0],q=r&&r.indicators&&r.indicators.quote&&r.indicators.quote[0]||{};S.history=(r&&r.timestamp||[]).map(function(t,i){return{date:new Date(t*1000),open:n(q.open&&q.open[i]),high:n(q.high&&q.high[i]),low:n(q.low&&q.low[i]),close:n(q.close&&q.close[i]),volume:n(q.volume&&q.volume[i])}}).filter(function(x){return x.close!==null});$('historySource').textContent='History: Yahoo .NS fallback'}
+ renderTech();
+}
+function sma(a,p){if(a.length<p)return null;return a.slice(-p).reduce(function(s,x){return s+x},0)/p}
+function ema(a,p){if(!a.length)return[];var k=2/(p+1),e=a[0];return a.map(function(v,i){e=i? v*k+e*(1-k):v;return e})}
+function rsi(a,p){p=p||14;if(a.length<=p)return null;var g=0,l=0;for(var i=a.length-p;i<a.length;i++){var d=a[i]-a[i-1];if(d>0)g+=d;else l-=d}if(l===0)return 100;var rs=(g/p)/(l/p);return 100-100/(1+rs)}
+function atr(rows,p){p=p||14;if(rows.length<=p)return null;var a=[];for(var i=1;i<rows.length;i++){var r=rows[i],pc=rows[i-1].close;if(r.high!==null&&r.low!==null)a.push(Math.max(r.high-r.low,Math.abs(r.high-pc),Math.abs(r.low-pc)))}return sma(a,p)}
+function renderTech(){
+ var h=S.history;if(!h.length)return;var c=h.map(function(x){return x.close}),last=c[c.length-1],s20=sma(c,20),s50=sma(c,50),s200=sma(c,200),rv=rsi(c),av=atr(h),e12=ema(c,12),e26=ema(c,26),mac=e12[e12.length-1]-e26[e26.length-1];var above=[s20,s50,s200].filter(function(x){return x!==null&&last>x}).length;
+ $('trend').textContent=above===3?'Above key MAs':above===0&&s200!==null?'Below key MAs':above>=2?'Mostly above':'Mixed';$('trendHint').textContent='Last '+money(last);$('rsi').textContent=f(rv,1);$('macd').textContent=f(mac,2);$('atr').textContent=money(av);$('sma20').textContent=money(s20);$('sma50').textContent=money(s50);$('sma200').textContent=money(s200);var w=h.slice(-20),sup=Math.min.apply(null,w.map(function(x){return x.low||x.close})),res=Math.max.apply(null,w.map(function(x){return x.high||x.close}));$('sr').textContent=money(sup)+' / '+money(res);
+ var tail=h.slice(-260),cc=tail.map(function(x){return x.close});function ma(p){return tail.map(function(_,i){if(i+1<p)return null;return cc.slice(i-p+1,i+1).reduce(function(s,x){return s+x},0)/p})}
+ if(S.charts.daily)S.charts.daily.destroy();S.charts.daily=new Chart($('daily'),{type:'line',data:{labels:tail.map(function(x){return x.date.toLocaleDateString('en-IN',{day:'2-digit',month:'short'})}),datasets:[{label:'Close',data:cc,borderColor:'#eef6fa',pointRadius:0,borderWidth:1.4},{label:'20 DMA',data:ma(20),borderColor:'#55a9ff',pointRadius:0,borderWidth:1},{label:'50 DMA',data:ma(50),borderColor:'#58d5d8',pointRadius:0,borderWidth:1},{label:'200 DMA',data:ma(200),borderColor:'#f2b84b',pointRadius:0,borderWidth:1}]},options:chartOpts()});
+}
+
+function resultVal(r,ks){for(var i=0;i<ks.length;i++)if(r[ks[i]]!==undefined&&r[ks[i]]!==null&&r[ks[i]]!=='')return n(r[ks[i]]);return null}
+async function results(sym){try{var j=await json(NSE+'/api/results-comparision?symbol='+encodeURIComponent(sym),16000);S.results=j.resCmpData||j.data||[]}catch(e){S.results=[]}var rows=S.results;$('results').innerHTML=rows.length?rows.slice(0,10).map(function(r){var period=r.re_to_dt||r.toDate||r.period||r.quarter||'—',rev=resultVal(r,['re_total_inc','totalIncome','revenue','income']),pat=resultVal(r,['re_net_profit','netProfit','profitAfterTax','pat']),eps=resultVal(r,['re_earnings_per_share','eps','basicEPS']);return'<tr><td>'+esc(period)+'</td><td>'+f(rev,2)+'</td><td class="'+cls(pat)+'">'+f(pat,2)+'</td><td>'+f(eps,2)+'</td><td>'+esc(r.consolidated||r.re_standalone_consolidated||r.resultType||'')+'</td></tr>'}).join(''):'<tr><td colspan="5">NSE results data unavailable for this symbol/session.</td></tr>'}
+
+async function corporate(sym){var qs='index=equities&symbol='+encodeURIComponent(sym);var a=await Promise.allSettled([json(NSE+'/api/corporates-announcements?'+qs,15000),json(NSE+'/api/corporates-corporateActions?'+qs,15000),json(NSE+'/api/corporate-share-holdings-master?'+qs,15000)]);S.ann=a[0].status==='fulfilled'?(a[0].value.data||a[0].value||[]):[];S.actions=a[1].status==='fulfilled'?(a[1].value.data||a[1].value||[]):[];S.share=a[2].status==='fulfilled'?(a[2].value.data||a[2].value||[]):[];function list(id,arr,label){$(id).innerHTML=arr.length?arr.slice(0,10).map(function(x){return'<div class="row"><span>'+esc(x.desc||x.subject||x.purpose||x.sm_name||x.company||label)+'</span><span class="meta">'+esc(x.an_dt||x.exDate||x.date||x.broadcastDate||'')+'</span></div>'}).join(''):'<div class="alert">No data returned.</div>'}list('ann',S.ann,'Announcement');list('actions',S.actions,'Corporate action');list('shareholding',S.share,'Shareholding filing')}
+
+async function options(sym){try{var ci=await json(NSE+'/api/option-chain-contract-info?symbol='+encodeURIComponent(sym),15000);var ex=ci.expiryDates||ci.expiry_dates||(ci.records&&ci.records.expiryDates)||(ci.data&&ci.data.expiryDates)||[];if(!ex.length)throw new Error('No F&O expiry');var expiry=ex[0],ch=await json(NSE+'/api/option-chain-v3?type=Equity&symbol='+encodeURIComponent(sym)+'&expiry='+encodeURIComponent(expiry),16000);S.option={expiry:expiry,chain:ch}}catch(e){S.option={error:e.message}}renderOptions()}
+function renderOptions(){var o=S.option;if(!o||o.error){$('expiry').textContent=$('pcr').textContent=$('maxCall').textContent=$('maxPut').textContent='—';$('optionRows').innerHTML='<div class="alert">'+esc(o&&o.error||'Option chain unavailable')+'</div>';return}var rows=(o.chain.records&&o.chain.records.data)||o.chain.records||o.chain.data||[],spot=n(S.quote&&S.quote.priceInfo&&S.quote.priceInfo.lastPrice),ce=0,pe=0,mc={v:-1,k:null},mp={v:-1,k:null};var norm=rows.map(function(r){var st=n(r.strikePrice||r.strike_price),C=r.CE||r.call||{},P=r.PE||r.put||{},co=n(C.openInterest||C.open_interest)||0,po=n(P.openInterest||P.open_interest)||0;ce+=co;pe+=po;if(co>mc.v)mc={v:co,k:st};if(po>mp.v)mp={v:po,k:st};return{st:st,C:C,P:P,co:co,po:po}}).filter(function(x){return x.st!==null}).sort(function(a,b){return a.st-b.st});var atm=norm.reduce(function(best,x){return !best||Math.abs(x.st-spot)<Math.abs(best.st-spot)?x:best},null),step=norm.length>1?Math.abs(norm[1].st-norm[0].st):1,near=atm?norm.filter(function(x){return Math.abs(x.st-atm.st)<=step*6}):norm.slice(0,12);$('expiry').textContent=o.expiry;$('pcr').textContent=ce?f(pe/ce,2):'—';$('maxCall').textContent=money(mc.k);$('maxPut').textContent=money(mp.k);$('optionRows').innerHTML=near.map(function(x){return'<div class="row"><span>'+f(x.st,0)+'</span><span>'+compact(x.co)+'</span><span>'+f(x.C.lastPrice||x.C.last_price,2)+'</span><span>'+compact(x.po)+' / '+f(x.P.lastPrice||x.P.last_price,2)+'</span></div>'}).join('')}
+
+var posWords=['beat','growth','surge','record','upgrade','wins','order','profit rises','strong','expansion','approval','dividend','buyback','raises guidance','partnership','recovery','improves','debt reduction'];
+var negWords=['miss','falls','decline','drops','downgrade','fraud','probe','investigation','default','loss','weak','cuts guidance','resigns','penalty','fine','lawsuit','slump','concern','debt rises','accident','disruption'];
+function sentiment(t){t=' '+String(t).toLowerCase()+' ';var s=0;posWords.forEach(function(w){if(t.indexOf(w)>=0)s++});negWords.forEach(function(w){if(t.indexOf(w)>=0)s--});return s>0?'positive':s<0?'negative':'neutral'}
+function rss(xml){var d=new DOMParser().parseFromString(xml,'text/xml');return Array.from(d.querySelectorAll('item,entry')).map(function(it){var link=it.querySelector('link'),href=link&&(link.getAttribute('href')||link.textContent);return{title:(it.querySelector('title')&&it.querySelector('title').textContent||'').trim(),link:(href||'').trim(),date:(it.querySelector('pubDate,published,updated')&&it.querySelector('pubDate,published,updated').textContent||'').trim()}}).filter(function(x){return x.title})}
+async function news(){var company=pick(S.quote||{},['info.companyName','metadata.companyName'])||S.symbol,q=encodeURIComponent('"'+company+'" OR "'+S.symbol+'" stock NSE when:7d');var feeds=[['Stock RSS','https://news.google.com/rss/search?q='+q+'&hl=en-IN&gl=IN&ceid=IN:en','stock'],['Economic Times','https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms','market'],['Business Standard','https://www.business-standard.com/rss/markets-106.rss','market'],['BusinessLine','https://www.thehindubusinessline.com/markets/feeder/default.rss','market'],['Mint Markets','https://www.livemint.com/rss/marketsRSS','market'],['Google India Markets','https://news.google.com/rss/search?q='+encodeURIComponent('Indian stock market NSE Nifty '+S.symbol)+'&hl=en-IN&gl=IN&ceid=IN:en','market']];var all=[];await Promise.all(feeds.map(async function(z){try{var x=rss(await text(z[1],12000));x.slice(0,25).forEach(function(i){all.push({title:i.title,link:i.link,date:i.date,source:z[0],type:z[2],sentiment:sentiment(i.title)})})}catch(e){}}));S.ann.slice(0,20).forEach(function(a){var t=a.desc||a.subject||a.sm_name||'NSE corporate announcement';all.push({title:t,link:a.attchmntFile||'',date:a.an_dt||a.broadcastDate||'',source:'NSE Corporate',type:'corporate',sentiment:sentiment(t)})});var seen={};S.news=all.filter(function(x){var k=x.title.toLowerCase().replace(/\s+/g,' ').trim();if(seen[k])return false;seen[k]=1;return true}).sort(function(a,b){return new Date(b.date||0)-new Date(a.date||0)});renderNews()}
+function renderNews(){var a=S.news,p=a.filter(function(x){return x.sentiment==='positive'}).length,ng=a.filter(function(x){return x.sentiment==='negative'}).length,ne=a.length-p-ng,score=a.length?(p-ng)/a.length*100:0;$('newsMood').textContent=score>20?'Positive-word tilt':score<-20?'Negative-word tilt':'Mixed / neutral';$('newsScore').textContent=Math.round(score);$('newsNeedle').style.left=((score+100)/2)+'%';$('newsPos').textContent=p;$('newsNeg').textContent=ng;$('newsNeu').textContent=ne;var ftr=a.filter(function(x){return S.filter==='all'||x.type===S.filter||x.sentiment===S.filter}).slice(0,45);$('newsList').innerHTML=ftr.length?ftr.map(function(x){return'<a class="news" href="'+esc(x.link||'#')+'" target="_blank" rel="noopener"><span class="source">'+esc(x.source)+'</span><span><h3>'+esc(x.title)+'</h3><div class="meta">'+esc(x.date||'')+' • '+esc(x.type)+'</div></span><span class="tag '+(x.sentiment==='positive'?'pos':x.sentiment==='negative'?'neg':'neu')+'">'+x.sentiment+'</span></a>'}).join(''):'<div class="alert">No news matched this filter.</div>'}
+
+async function analyze(sym){sym=String(sym||'').trim().toUpperCase().replace(/[^A-Z0-9&.-]/g,'');if(!sym)return;S.symbol=sym;$('symbol').value=sym;$('symTitle').textContent=sym;$('company').textContent='Loading…';setConn(false,'Refreshing…');if(!(await health())){$('dataNote').className='alert bad';$('dataNote').textContent='Codespaces backend is not running. In the terminal run npm start, then open forwarded port 3000.';setConn(false,'Backend offline');return}var jobs=[market(),quote(sym),intraday(sym),history(sym),results(sym),corporate(sym),options(sym)];await Promise.allSettled(jobs);await news();setConn(true,'Live');clearInterval(S.timers.q);clearInterval(S.timers.n);S.timers.q=setInterval(function(){market();quote(S.symbol);intraday(S.symbol)},15000);S.timers.n=setInterval(news,300000)}
+$('analyze').onclick=function(){analyze($('symbol').value)};$('refresh').onclick=function(){analyze(S.symbol)};$('symbol').addEventListener('keydown',function(e){if(e.key==='Enter')analyze(e.target.value)});$('newsTabs').onclick=function(e){var b=e.target.closest('[data-f]');if(!b)return;S.filter=b.getAttribute('data-f');Array.from(document.querySelectorAll('#newsTabs .chip')).forEach(function(x){x.classList.toggle('active',x===b)});renderNews()};analyze(S.symbol);
+})();
+</script>
+</body>
+</html>
