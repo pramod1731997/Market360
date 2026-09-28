@@ -1,0 +1,20 @@
+{
+  "name": "Market360",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm",
+  "forwardPorts": [3000],
+  "portsAttributes": {
+    "3000": {
+      "label": "Market360",
+      "onAutoForward": "openBrowser",
+      "visibility": "private"
+    }
+  },
+  "postStartCommand": "nohup npm start > /tmp/market360.log 2>&1 &",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "files.autoSave": "afterDelay"
+      }
+    }
+  }
+}
