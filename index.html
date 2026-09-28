@@ -199,14 +199,48 @@ function renderMarket(){
  var sp=n(S.quote&&S.quote.priceInfo&&S.quote.priceInfo.pChange);$('relative').textContent=sp===null?'—':((sp-np)>=0?'+':'')+f(sp-np,2)+' pp';
 }
 
+function normalizeNextQuote(j,sym){
+ var r=j&&j.equityResponse&&j.equityResponse[0];if(!r)throw new Error('NSE NextApi returned no equityResponse');
+ var md=r.metaData||{},pi=r.priceInfo||{},ob=r.orderBook||{},ti=r.tradeInfo||{},si=r.secInfo||{};
+ function pv(paths){return pick(r,paths)}
+ var last=n(pick(ob,['lastPrice','ltp'])||pick(pi,['lastPrice','ltp'])||pv(['lastPrice']));
+ var prev=n(pick(pi,['previousClose','prevClose','close'])||pick(ob,['previousClose','prevClose','closePrice'])||pv(['previousClose','prevClose']));
+ var op=n(pick(pi,['open','openPrice'])||pick(ob,['open','openPrice']));
+ var hi=n(pick(pi,['intraDayHighLow.max','dayHigh','high','highPrice'])||pick(ob,['dayHigh','highPrice']));
+ var lo=n(pick(pi,['intraDayHighLow.min','dayLow','low','lowPrice'])||pick(ob,['dayLow','lowPrice']));
+ var hi52=n(pick(pi,['weekHighLow.max','fiftyTwoWeekHigh','weekHigh','yearHigh'])||pick(ob,['fiftyTwoWeekHigh','weekHigh']));
+ var lo52=n(pick(pi,['weekHighLow.min','fiftyTwoWeekLow','weekLow','yearLow'])||pick(ob,['fiftyTwoWeekLow','weekLow']));
+ var change=n(pick(pi,['change','changeValue']));if(change===null&&last!==null&&prev!==null)change=last-prev;
+ var pchange=n(pick(pi,['pChange','percentChange','changePercent']));if(pchange===null&&change!==null&&prev)pchange=change/prev*100;
+ var totalVol=n(pick(ti,['totalTradedVolume','tradedVolume','totalTradedQuantity','quantityTraded'])||pick(ob,['totalTradedVolume','tradedVolume']));
+ var delivery=n(pick(ti,['deliveryToTradedQuantity','deliveryPercentage','deliveryPercent','delivery'])||pv(['deliveryToTradedQuantity']));
+ var marketCap=n(pick(ti,['totalMarketCap','marketCap','totalMktCap']));
+ var buyQty=n(pick(ob,['totalBuyQuantity','buyQuantity','totalBuyQty']));
+ var sellQty=n(pick(ob,['totalSellQuantity','sellQuantity','totalSellQty']));
+ var meta={
+  companyName:pick(md,['companyName','company','name'])||sym,
+  pdSymbolPe:pick(md,['pdSymbolPe','pe','symbolPE','symbolPe']),
+  pdSectorPe:pick(md,['pdSectorPe','sectorPE','sectorPe']),
+  pdSymbolPb:pick(md,['pdSymbolPb','pb','priceToBook']),
+  faceValue:pick(si,['faceValue'])||pick(md,['faceValue'])
+ };
+ var quote={info:{symbol:pick(md,['symbol'])||sym,companyName:meta.companyName},metadata:meta,securityInfo:si,industryInfo:{basicIndustry:pick(md,['basicIndustry','industry','sector'])},priceInfo:{lastPrice:last,previousClose:prev,open:op,intraDayHighLow:{max:hi,min:lo},weekHighLow:{max:hi52,min:lo52},vwap:pick(pi,['vwap','VWAP'])||pick(ob,['vwap']),change:change,pChange:pchange}};
+ var trade={marketDeptOrderBook:{tradeInfo:Object.assign({},ti,{totalTradedVolume:totalVol,totalMarketCap:marketCap}),totalBuyQuantity:buyQty,totalSellQuantity:sellQty},securityWiseDP:{quantityTraded:totalVol,deliveryToTradedQuantity:delivery}};
+ return{quote:quote,trade:trade,raw:r};
+}
 async function quote(sym){
  try{
-  S.quote=await json(NSE+'/api/quote-equity?symbol='+encodeURIComponent(sym),14000);
-  try{S.trade=await json(NSE+'/api/quote-equity?symbol='+encodeURIComponent(sym)+'&section=trade_info',14000)}catch(e){S.trade=null}
-  renderQuote('NSE');
- }catch(e){
-  var y=await json('https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(sym+'.NS')+'?interval=1m&range=1d&includePrePost=false',14000);var r=y.chart&&y.chart.result&&y.chart.result[0];if(!r)throw e;var m=r.meta||{},last=m.regularMarketPrice;
-  S.quote={info:{symbol:sym,companyName:m.longName||m.shortName||sym},priceInfo:{lastPrice:last,previousClose:m.chartPreviousClose,open:m.regularMarketOpen,intraDayHighLow:{max:m.regularMarketDayHigh,min:m.regularMarketDayLow},weekHighLow:{max:m.fiftyTwoWeekHigh,min:m.fiftyTwoWeekLow},change:last-m.chartPreviousClose,pChange:m.chartPreviousClose?((last-m.chartPreviousClose)/m.chartPreviousClose*100):null}};S.trade=null;renderQuote('Yahoo .NS fallback');
+  var nx=await json(NSE+'/api/NextApi/apiClient/GetQuoteApi?functionName=getSymbolData&marketType=N&series=EQ&symbol='+encodeURIComponent(sym),15000);
+  var z=normalizeNextQuote(nx,sym);S.quote=z.quote;S.trade=z.trade;renderQuote('NSE NextApi');return;
+ }catch(nextErr){
+  try{
+   S.quote=await json(NSE+'/api/quote-equity?symbol='+encodeURIComponent(sym),14000);
+   try{S.trade=await json(NSE+'/api/quote-equity?symbol='+encodeURIComponent(sym)+'&section=trade_info',14000)}catch(e){S.trade=null}
+   renderQuote('NSE classic');return;
+  }catch(classicErr){
+   var y=await json('https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(sym+'.NS')+'?interval=1m&range=1d&includePrePost=false',14000);var r=y.chart&&y.chart.result&&y.chart.result[0];if(!r)throw classicErr;var m=r.meta||{},qq=r.indicators&&r.indicators.quote&&r.indicators.quote[0]||{},last=m.regularMarketPrice;var opens=(qq.open||[]).filter(function(x){return n(x)!==null}),highs=(qq.high||[]).filter(function(x){return n(x)!==null}),lows=(qq.low||[]).filter(function(x){return n(x)!==null}),vols=(qq.volume||[]).map(n).filter(function(x){return x!==null});var dayOpen=n(m.regularMarketOpen);if(dayOpen===null&&opens.length)dayOpen=n(opens[0]);var dayHigh=n(m.regularMarketDayHigh);if(dayHigh===null&&highs.length)dayHigh=Math.max.apply(null,highs.map(n));var dayLow=n(m.regularMarketDayLow);if(dayLow===null&&lows.length)dayLow=Math.min.apply(null,lows.map(n));var dayVol=vols.length?vols.reduce(function(a,b){return a+b},0):null;
+   S.quote={info:{symbol:sym,companyName:m.longName||m.shortName||sym},priceInfo:{lastPrice:last,previousClose:m.chartPreviousClose,open:dayOpen,intraDayHighLow:{max:dayHigh,min:dayLow},weekHighLow:{max:m.fiftyTwoWeekHigh,min:m.fiftyTwoWeekLow},change:last-m.chartPreviousClose,pChange:m.chartPreviousClose?((last-m.chartPreviousClose)/m.chartPreviousClose*100):null}};S.trade={marketDeptOrderBook:{tradeInfo:{totalTradedVolume:dayVol}},securityWiseDP:{quantityTraded:dayVol}};renderQuote('Yahoo .NS fallback');
+  }
  }
 }
 function renderQuote(src){
@@ -219,7 +253,17 @@ function renderQuote(src){
  $('dataNote').className='alert '+(src.indexOf('fallback')>=0?'bad':'good');$('dataNote').textContent=src.indexOf('fallback')>=0?'NSE quote was unavailable from this Codespace, so price fields temporarily use a clearly labelled Yahoo .NS fallback.':'NSE quote loaded through the Codespaces session gateway.';setConn(true,src);renderMarket();
 }
 async function intraday(sym){
- var pts=[],lab='NSE intraday';try{var j=await json(NSE+'/api/chart-databyindex?index='+encodeURIComponent(sym+'EQN'),14000);pts=(j.grapthData||j.graphData||[]).map(function(x){return{x:new Date(x[0]),y:n(x[1])}}).filter(function(x){return x.y!==null})}catch(e){var y=await json('https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(sym+'.NS')+'?interval=5m&range=1d',14000);var r=y.chart&&y.chart.result&&y.chart.result[0],q=r&&r.indicators&&r.indicators.quote&&r.indicators.quote[0];pts=(r&&r.timestamp||[]).map(function(t,i){return{x:new Date(t*1000),y:n(q&&q.close&&q.close[i])}}).filter(function(x){return x.y!==null});lab='Yahoo intraday fallback'}
+ var pts=[],lab='NSE intraday';
+ try{
+  var j=await json(NSE+'/api/NextApi/apiClient/GetQuoteApi?functionName=getSymbolChartData&symbol='+encodeURIComponent(sym+'EQN')+'&days=1D',14000);
+  pts=(j.grapthData||j.graphData||[]).map(function(x){return{x:new Date(x[0]),y:n(x[1])}}).filter(function(x){return x.y!==null});if(!pts.length)throw new Error('NextApi chart empty');lab='NSE NextApi intraday';
+ }catch(e1){
+  try{
+   var j2=await json(NSE+'/api/chart-databyindex?index='+encodeURIComponent(sym+'EQN'),14000);pts=(j2.grapthData||j2.graphData||[]).map(function(x){return{x:new Date(x[0]),y:n(x[1])}}).filter(function(x){return x.y!==null});if(!pts.length)throw new Error('classic chart empty');lab='NSE intraday';
+  }catch(e2){
+   var y=await json('https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(sym+'.NS')+'?interval=5m&range=1d',14000);var r=y.chart&&y.chart.result&&y.chart.result[0],q=r&&r.indicators&&r.indicators.quote&&r.indicators.quote[0];pts=(r&&r.timestamp||[]).map(function(t,i){return{x:new Date(t*1000),y:n(q&&q.close&&q.close[i])}}).filter(function(x){return x.y!==null});lab='Yahoo intraday fallback';
+  }
+ }
  if(S.charts.intra)S.charts.intra.destroy();S.charts.intra=new Chart($('intraday'),{type:'line',data:{labels:pts.map(function(x){return x.x.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})}),datasets:[{label:lab,data:pts.map(function(x){return x.y}),borderColor:'#55a9ff',backgroundColor:'rgba(85,169,255,.08)',fill:true,pointRadius:0,borderWidth:1.6,tension:.15}]},options:chartOpts()});
 }
 function csvLine(line){var o=[],c='',q=false;for(var i=0;i<line.length;i++){var ch=line[i];if(ch==='"'){if(q&&line[i+1]==='"'){c+='"';i++}else q=!q}else if(ch===','&&!q){o.push(c);c=''}else c+=ch}o.push(c);return o}
@@ -254,7 +298,7 @@ function rss(xml){var d=new DOMParser().parseFromString(xml,'text/xml');return A
 async function news(){var company=pick(S.quote||{},['info.companyName','metadata.companyName'])||S.symbol,q=encodeURIComponent('"'+company+'" OR "'+S.symbol+'" stock NSE when:7d');var feeds=[['Stock RSS','https://news.google.com/rss/search?q='+q+'&hl=en-IN&gl=IN&ceid=IN:en','stock'],['Economic Times','https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms','market'],['Business Standard','https://www.business-standard.com/rss/markets-106.rss','market'],['BusinessLine','https://www.thehindubusinessline.com/markets/feeder/default.rss','market'],['Mint Markets','https://www.livemint.com/rss/marketsRSS','market'],['Google India Markets','https://news.google.com/rss/search?q='+encodeURIComponent('Indian stock market NSE Nifty '+S.symbol)+'&hl=en-IN&gl=IN&ceid=IN:en','market']];var all=[];await Promise.all(feeds.map(async function(z){try{var x=rss(await text(z[1],12000));x.slice(0,25).forEach(function(i){all.push({title:i.title,link:i.link,date:i.date,source:z[0],type:z[2],sentiment:sentiment(i.title)})})}catch(e){}}));S.ann.slice(0,20).forEach(function(a){var t=a.desc||a.subject||a.sm_name||'NSE corporate announcement';all.push({title:t,link:a.attchmntFile||'',date:a.an_dt||a.broadcastDate||'',source:'NSE Corporate',type:'corporate',sentiment:sentiment(t)})});var seen={};S.news=all.filter(function(x){var k=x.title.toLowerCase().replace(/\s+/g,' ').trim();if(seen[k])return false;seen[k]=1;return true}).sort(function(a,b){return new Date(b.date||0)-new Date(a.date||0)});renderNews()}
 function renderNews(){var a=S.news,p=a.filter(function(x){return x.sentiment==='positive'}).length,ng=a.filter(function(x){return x.sentiment==='negative'}).length,ne=a.length-p-ng,score=a.length?(p-ng)/a.length*100:0;$('newsMood').textContent=score>20?'Positive-word tilt':score<-20?'Negative-word tilt':'Mixed / neutral';$('newsScore').textContent=Math.round(score);$('newsNeedle').style.left=((score+100)/2)+'%';$('newsPos').textContent=p;$('newsNeg').textContent=ng;$('newsNeu').textContent=ne;var ftr=a.filter(function(x){return S.filter==='all'||x.type===S.filter||x.sentiment===S.filter}).slice(0,45);$('newsList').innerHTML=ftr.length?ftr.map(function(x){return'<a class="news" href="'+esc(x.link||'#')+'" target="_blank" rel="noopener"><span class="source">'+esc(x.source)+'</span><span><h3>'+esc(x.title)+'</h3><div class="meta">'+esc(x.date||'')+' • '+esc(x.type)+'</div></span><span class="tag '+(x.sentiment==='positive'?'pos':x.sentiment==='negative'?'neg':'neu')+'">'+x.sentiment+'</span></a>'}).join(''):'<div class="alert">No news matched this filter.</div>'}
 
-async function analyze(sym){sym=String(sym||'').trim().toUpperCase().replace(/[^A-Z0-9&.-]/g,'');if(!sym)return;S.symbol=sym;$('symbol').value=sym;$('symTitle').textContent=sym;$('company').textContent='Loading…';setConn(false,'Refreshing…');if(!(await health())){$('dataNote').className='alert bad';$('dataNote').textContent='Codespaces backend is not running. In the terminal run npm start, then open forwarded port 3000.';setConn(false,'Backend offline');return}var jobs=[market(),quote(sym),intraday(sym),history(sym),results(sym),corporate(sym),options(sym)];await Promise.allSettled(jobs);await news();setConn(true,'Live');clearInterval(S.timers.q);clearInterval(S.timers.n);S.timers.q=setInterval(function(){market();quote(S.symbol);intraday(S.symbol)},15000);S.timers.n=setInterval(news,300000)}
+async function analyze(sym){sym=String(sym||'').trim().toUpperCase().replace(/[^A-Z0-9&.-]/g,'');if(!sym)return;S.symbol=sym;$('symbol').value=sym;$('symTitle').textContent=sym;$('company').textContent='Loading…';setConn(false,'Refreshing…');if(!(await health())){$('dataNote').className='alert bad';$('dataNote').textContent='Codespaces backend is not running. In the terminal run npm start, then open forwarded port 3000.';setConn(false,'Backend offline');return}var jobs=[market(),quote(sym),intraday(sym),history(sym),results(sym),corporate(sym),options(sym)];await Promise.allSettled(jobs);await news();setConn(true,'Live');clearInterval(S.timers.q);clearInterval(S.timers.n);S.timers.q=setInterval(function(){market();quote(S.symbol);intraday(S.symbol)},30000);S.timers.n=setInterval(news,300000)}
 $('analyze').onclick=function(){analyze($('symbol').value)};$('refresh').onclick=function(){analyze(S.symbol)};$('symbol').addEventListener('keydown',function(e){if(e.key==='Enter')analyze(e.target.value)});$('newsTabs').onclick=function(e){var b=e.target.closest('[data-f]');if(!b)return;S.filter=b.getAttribute('data-f');Array.from(document.querySelectorAll('#newsTabs .chip')).forEach(function(x){x.classList.toggle('active',x===b)});renderNews()};analyze(S.symbol);
 })();
 </script>
