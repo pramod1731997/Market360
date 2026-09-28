@@ -25,21 +25,70 @@ const ALLOWED_HOSTS = new Set([
   'api.rss2json.com'
 ]);
 
-const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36';
+const USER_AGENT = 'Mozilla/5.0 (Windows NT 11.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.6998.166 Safari/537.36';
 const cookies = new Map();
 let lastPrime = 0;
 let primePromise = null;
+const responseCache = new Map();
 
-function headersFor(url, isNse = false) {
-  const h = {
+function symbolFromUrl(url) {
+  try {
+    const u = new URL(url);
+    return u.searchParams.get('symbol') || 'TCS';
+  } catch {
+    return 'TCS';
+  }
+}
+
+function cookieHeader() {
+  return [...cookies.entries()].map(([k,v]) => `${k}=${v}`).join('; ');
+}
+
+function headersFor(url, isNse = false, navigation = false) {
+  if (!isNse) {
+    return {
+      'User-Agent': USER_AGENT,
+      'Accept': 'application/json,text/plain,text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      'Accept-Language': 'en-GB,en-US;q=0.9,en;q=0.8',
+      'Cache-Control': 'no-cache',
+      'Pragma': 'no-cache',
+      'Referer': url
+    };
+  }
+
+  const symbol = symbolFromUrl(url);
+  const h = navigation ? {
     'User-Agent': USER_AGENT,
-    'Accept': 'application/json,text/plain,text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-    'Accept-Language': 'en-US,en;q=0.9,en-IN;q=0.8',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+    'Accept-Language': 'en-GB,en-US;q=0.9,en;q=0.8',
     'Cache-Control': 'no-cache',
     'Pragma': 'no-cache',
-    'Referer': isNse ? 'https://www.nseindia.com/' : url
+    'Sec-CH-UA': '"Google Chrome";v="134", "Chromium";v="134", "Not?A_Brand";v="99"',
+    'Sec-CH-UA-Mobile': '?0',
+    'Sec-CH-UA-Platform': '"Windows"',
+    'Sec-Fetch-Dest': 'document',
+    'Sec-Fetch-Mode': 'navigate',
+    'Sec-Fetch-Site': 'none',
+    'Sec-Fetch-User': '?1',
+    'Upgrade-Insecure-Requests': '1',
+    'DNT': '1'
+  } : {
+    'User-Agent': USER_AGENT,
+    'Accept': 'application/json,text/plain,*/*',
+    'Accept-Language': 'en-GB,en-US;q=0.9,en;q=0.8',
+    'Cache-Control': 'no-cache',
+    'Pragma': 'no-cache',
+    'Referer': `https://www.nseindia.com/get-quotes/equity?symbol=${encodeURIComponent(symbol)}`,
+    'X-Requested-With': 'XMLHttpRequest',
+    'Sec-CH-UA': '"Google Chrome";v="134", "Chromium";v="134", "Not?A_Brand";v="99"',
+    'Sec-CH-UA-Mobile': '?0',
+    'Sec-CH-UA-Platform': '"Windows"',
+    'Sec-Fetch-Dest': 'empty',
+    'Sec-Fetch-Mode': 'cors',
+    'Sec-Fetch-Site': 'same-origin',
+    'DNT': '1'
   };
-  const cookie = [...cookies.entries()].map(([k,v]) => `${k}=${v}`).join('; ');
+  const cookie = cookieHeader();
   if (cookie) h.Cookie = cookie;
   return h;
 }
@@ -60,20 +109,32 @@ function absorbCookies(res) {
   }
 }
 
-async function primeNse(force = false) {
+async function primeNse(force = false, symbol = 'TCS') {
   const now = Date.now();
   if (!force && now - lastPrime < 8 * 60 * 1000 && cookies.size) return;
   if (primePromise && !force) return primePromise;
   primePromise = (async () => {
     try {
-      const res = await fetch('https://www.nseindia.com/', {
-        headers: headersFor('https://www.nseindia.com/', true),
+      if (force) cookies.clear();
+
+      const home = await fetch('https://www.nseindia.com/', {
+        headers: headersFor('https://www.nseindia.com/', true, true),
         redirect: 'follow',
         signal: AbortSignal.timeout(15000)
       });
-      absorbCookies(res);
-      await res.arrayBuffer();
-      if (res.ok) lastPrime = Date.now();
+      absorbCookies(home);
+      await home.arrayBuffer();
+
+      const pageUrl = `https://www.nseindia.com/get-quotes/equity?symbol=${encodeURIComponent(symbol || 'TCS')}`;
+      const page = await fetch(pageUrl, {
+        headers: headersFor(pageUrl, true, true),
+        redirect: 'follow',
+        signal: AbortSignal.timeout(15000)
+      });
+      absorbCookies(page);
+      await page.arrayBuffer();
+
+      if (home.ok || page.ok) lastPrime = Date.now();
     } catch (err) {
       lastPrime = 0;
       console.warn('[Market360] NSE prime failed:', err.message);
@@ -85,17 +146,21 @@ async function primeNse(force = false) {
 }
 
 async function fetchRemote(targetUrl) {
+  const cacheKey = targetUrl;
+  const cached = responseCache.get(cacheKey);
+  if (cached && cached.expires > Date.now()) return { res: cached.res, body: cached.body };
+
   let parsed;
   try { parsed = new URL(targetUrl); } catch { throw new Error('Invalid target URL'); }
   if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('Only http/https URLs are allowed');
   if (!ALLOWED_HOSTS.has(parsed.hostname.toLowerCase())) throw new Error(`Host not allowed: ${parsed.hostname}`);
 
   const isNse = parsed.hostname.toLowerCase().endsWith('nseindia.com');
-  if (isNse) await primeNse(false);
+  if (isNse) await primeNse(false, parsed.searchParams.get('symbol') || 'TCS');
 
   const request = async () => {
     const res = await fetch(parsed, {
-      headers: headersFor(parsed.href, isNse),
+      headers: headersFor(parsed.href, isNse, false),
       redirect: 'follow',
       signal: AbortSignal.timeout(20000)
     });
@@ -106,8 +171,16 @@ async function fetchRemote(targetUrl) {
 
   let out = await request();
   if (isNse && [401, 403, 429].includes(out.res.status)) {
-    await primeNse(true);
+    await primeNse(true, parsed.searchParams.get('symbol') || 'TCS');
     out = await request();
+  }
+  if (isNse && out.res.ok) {
+    const h = new Headers(out.res.headers);
+    responseCache.set(cacheKey, {
+      expires: Date.now() + 8000,
+      res: new Response(null, { status: out.res.status, statusText: out.res.statusText, headers: h }),
+      body: out.body
+    });
   }
   return out;
 }
@@ -174,6 +247,7 @@ const server = http.createServer(async (req, res) => {
         service: 'Market360 Codespaces gateway',
         port: PORT,
         nseCookieCount: cookies.size,
+        nseSessionAgeSeconds: lastPrime ? Math.round((Date.now()-lastPrime)/1000) : null,
         uptimeSeconds: Math.round(process.uptime())
       });
     }
