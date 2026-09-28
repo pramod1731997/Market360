@@ -188,7 +188,7 @@ async function market(){
  if(a[3].status==='fulfilled'){var ms=a[3].value.marketState||a[3].value.data||[];$('marketStatus').textContent=(ms[0]&&((ms[0].marketStatus)||(ms[0].marketState)))||'status available'}
  renderMarket();
 }
-function flowVal(label){var r=S.flows;if(!r)return null;var arr=Array.isArray(r)?r:(r.data||[]);var x=arr.find(function(z){return String(z.category||z.name||z.clientType||'').toUpperCase().indexOf(label)>=0});return n(x&&pick(x,['buyValue','buy','netValue','net','value']))}
+function flowVal(label){var r=S.flows;if(!r)return null;var arr=Array.isArray(r)?r:(r.data||[]);var x=arr.find(function(z){return String(z.category||z.name||z.clientType||'').toUpperCase().indexOf(label)>=0});return n(x&&pick(x,['netValue','net','buyValue','buy','value']))}
 function renderMarket(){
  function tick(id,x){if(!x){$(id).textContent='—';return}var c=n(x.percentChange!==undefined?x.percentChange:x.pChange);$(id).innerHTML=f(x.last,2)+' <span class="'+cls(c)+'">'+pct(c)+'</span>'}
  tick('nifty',S.nifty);tick('bank',S.bank);tick('vix',S.vix);
